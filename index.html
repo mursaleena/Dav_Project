@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upwork Job Data Visualization Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>Loading Dashboard...</h2>
+            <p>Analyzing Upwork job data</p>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="dashboard hidden">
+        <!-- Header -->
+        <header class="header">
+            <div class="container">
+                <div class="header-content">
+                    <div class="logo">
+                        <i class="fas fa-chart-line"></i>
+                        <h1>Upwork Analytics Dashboard</h1>
+                    </div>
+                    <div class="header-stats">
+                        <div class="stat-card">
+                            <span class="stat-value" id="totalJobs">0</span>
+                            <span class="stat-label">Total Jobs</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value" id="avgBudget">$0</span>
+                            <span class="stat-label">Avg Budget</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-value" id="topCategory">-</span>
+                            <span class="stat-label">Top Category</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Filter Panel -->
+        <section class="filter-panel">
+            <div class="container">
+                <div class="filter-content">
+                    <div class="filter-group">
+                        <h3><i class="fas fa-calendar"></i> Time Period</h3>
+                        <select id="timePeriodSelect" class="chart-select" multiple>
+                            <option value="2024-01">January 2024</option>
+                            <option value="2024-02">February 2024</option>
+                            <option value="2024-03">March 2024</option>
+                            <option value="2024-04">April 2024</option>
+                            <option value="2024-05">May 2024</option>
+                            <option value="2024-06">June 2024</option>
+                            <option value="2024-07">July 2024</option>
+                            <option value="2024-08">August 2024</option>
+                            <option value="2024-09">September 2024</option>
+                            <option value="2024-10">October 2024</option>
+                            <option value="2024-11">November 2024</option>
+                            <option value="2024-12">December 2024</option>
+                        </select>
+                        <div class="time-controls">
+                            <button id="selectAllMonths" class="btn-secondary">Select All</button>
+                            <button id="clearAllMonths" class="btn-secondary">Clear All</button>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <h3><i class="fas fa-tags"></i> Categories</h3>
+                        <select id="categorySelect" class="chart-select" multiple>
+                            <!-- Categories will be populated dynamically -->
+                        </select>
+                        <div class="category-controls">
+                            <button id="selectAllCategories" class="btn-secondary">Select All</button>
+                            <button id="clearAllCategories" class="btn-secondary">Clear All</button>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <h3><i class="fas fa-chart-bar"></i> Chart Type</h3>
+                        <select id="chartTypeSelect" class="chart-select">
+                            <option value="bar">Bar Chart</option>
+                            <option value="line">Line Chart</option>
+                            <option value="pie">Pie Chart</option>
+                            <option value="doughnut">Doughnut Chart</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="container">
+                <!-- Primary Visualization -->
+                <section class="chart-section">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h2><i class="fas fa-chart-area"></i> Job Distribution Analysis</h2>
+                            <div class="chart-controls">
+                                <button id="exportChart" class="btn-icon" title="Export Chart">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                                <button id="refreshChart" class="btn-icon" title="Refresh Data">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="primaryChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Category Comparison -->
+                <section class="chart-section">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h2><i class="fas fa-balance-scale"></i> Category Comparison</h2>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="categoryChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Predictive Analytics -->
+                <section class="chart-section">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h2><i class="fas fa-crystal-ball"></i> Predictive Analytics</h2>
+                            <div class="prediction-info">
+                                <span class="info-badge">
+                                    <i class="fas fa-info-circle"></i>
+                                    LSTM-based 12-month forecast
+                                </span>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="predictiveChart"></canvas>
+                        </div>
+                        <div class="prediction-legend">
+                            <div class="legend-item">
+                                <span class="legend-marker historical"></span>
+                                Historical Data (12 months)
+                            </div>
+                            <div class="legend-item">
+                                <span class="legend-marker predicted"></span>
+                                Predicted Trends (12 months)
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Geographic Distribution -->
+                <section class="chart-section">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h2><i class="fas fa-globe"></i> Geographic Distribution</h2>
+                            <div class="geo-subtitle">Top 10 Countries by Job Volume</div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="geoChart"></canvas>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Budget Analysis -->
+                <section class="chart-section" id="budgetAnalysisSection">
+                    <div class="budget-analysis-container">
+                        <div class="budget-message" id="budgetMessage">
+                            <div class="message-content">
+                                <i class="fas fa-hand-pointer"></i>
+                                <h3>Budget Analysis</h3>
+                                <p>Select exactly one category to view detailed budget analysis</p>
+                            </div>
+                        </div>
+                        <div class="budget-charts hidden" id="budgetCharts">
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3><i class="fas fa-dollar-sign"></i> Fixed Budget Jobs</h3>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="fixedBudgetChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="chart-card">
+                                <div class="chart-header">
+                                    <h3><i class="fas fa-clock"></i> Hourly Rate Jobs</h3>
+                                </div>
+                                <div class="chart-container">
+                                    <canvas id="hourlyBudgetChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- AI Recommendations -->
+                <section class="chart-section" id="aiRecommendationSection">
+                    <div class="ai-recommendation-container">
+                        <div class="recommendation-message" id="recommendationMessage">
+                            <div class="message-content">
+                                <i class="fas fa-robot"></i>
+                                <h3>AI-Powered Category Recommendation</h3>
+                                <p>Select exactly one category to receive AI-powered insights and recommendations</p>
+                            </div>
+                        </div>
+                        <div class="recommendation-content hidden" id="recommendationContent">
+                            <div class="recommendation-card">
+                                <div class="recommendation-header">
+                                    <h3><i class="fas fa-brain"></i> Category Analysis & Recommendation</h3>
+                                    <div class="recommendation-score" id="recommendationScore">
+                                        <span class="score-value">0</span>
+                                        <span class="score-label">Profitability Score</span>
+                                    </div>
+                                </div>
+                                <div class="recommendation-body">
+                                    <div class="metrics-grid">
+                                        <div class="metric-item">
+                                            <i class="fas fa-briefcase"></i>
+                                            <span class="metric-label">Job Volume</span>
+                                            <span class="metric-value" id="jobVolume">-</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <i class="fas fa-money-bill-wave"></i>
+                                            <span class="metric-label">Avg Budget</span>
+                                            <span class="metric-value" id="avgCategoryBudget">-</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <i class="fas fa-users"></i>
+                                            <span class="metric-label">Competition</span>
+                                            <span class="metric-value" id="competitionLevel">-</span>
+                                        </div>
+                                        <div class="metric-item">
+                                            <i class="fas fa-chart-line"></i>
+                                            <span class="metric-label">Growth Trend</span>
+                                            <span class="metric-value" id="growthTrend">-</span>
+                                        </div>
+                                    </div>
+                                    <div class="recommendation-text" id="recommendationText">
+                                        <!-- AI recommendation will be populated here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Summary Statistics -->
+                <section class="summary-section">
+                    <div class="summary-grid">
+                        <div class="summary-card">
+                            <div class="summary-header">
+                                <h3><i class="fas fa-calculator"></i> Budget Summary</h3>
+                            </div>
+                            <div class="summary-stats">
+                                <div class="stat-row">
+                                    <span class="stat-label">Fixed Budget Average:</span>
+                                    <span class="stat-value" id="fixedBudgetAvg">$0</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-label">Hourly Rate Average:</span>
+                                    <span class="stat-value" id="hourlyRateAvg">$0</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-label">Overall Average:</span>
+                                    <span class="stat-value" id="overallAvg">$0</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-header">
+                                <h3><i class="fas fa-chart-pie"></i> Job Type Distribution</h3>
+                            </div>
+                            <div class="summary-stats">
+                                <div class="stat-row">
+                                    <span class="stat-label">Fixed Budget Jobs:</span>
+                                    <span class="stat-value" id="fixedJobsCount">0</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-label">Hourly Rate Jobs:</span>
+                                    <span class="stat-value" id="hourlyJobsCount">0</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-label">Total Categories:</span>
+                                    <span class="stat-value" id="totalCategories">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="container">
+                <div class="footer-content">
+                    <div class="footer-info">
+                        <p>&copy; 2024 Upwork Analytics Dashboard. Professional data visualization for freelance market insights.</p>
+                    </div>
+                    <div class="footer-actions">
+                        <button id="exportReport" class="btn-primary">
+                            <i class="fas fa-file-pdf"></i>
+                            Export Report
+                        </button>
+                        <button id="refreshData" class="btn-secondary">
+                            <i class="fas fa-sync-alt"></i>
+                            Refresh Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
